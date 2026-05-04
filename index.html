@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Captain's Log">
+<meta name="theme-color" content="#050a0f">
+<title>Captain's Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --lcars-gold: #c8a84b;
+    --lcars-orange: #c87941;
+    --lcars-blue: #4b8ec8;
+    --lcars-teal: #4bc8b8;
+    --lcars-red: #c84b4b;
+    --bg: #050a0f;
+    --surface: #080f18;
+    --surface2: #0c1520;
+    --border: #1a2a3a;
+    --text: #d0e8f0;
+    --text-dim: #4a6a7a;
+    --text-muted: #2a3a4a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    overflow-x: hidden;
+  }
+
+  /* Scanline effect */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* Star field */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 15%, rgba(200,168,75,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 25%, rgba(75,142,200,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 40% 70%, rgba(200,168,75,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 85%, rgba(75,200,184,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 55%, rgba(200,168,75,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 10% 90%, rgba(75,142,200,0.2) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 0 40px;
+  }
+
+  /* LCARS Header Bar */
+  .lcars-header {
+    display: flex;
+    align-items: stretch;
+    height: 80px;
+    margin-bottom: 24px;
+    animation: slideDown 0.6s ease both;
+  }
+
+  .lcars-pill {
+    width: 64px;
+    background: var(--lcars-gold);
+    border-radius: 40px 0 0 40px;
+    flex-shrink: 0;
+  }
+
+  .lcars-bar {
+    flex: 1;
+    background: var(--lcars-gold);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 0 20px 10px;
+    position: relative;
+  }
+
+  .lcars-bar::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 24px;
+    background: var(--bg);
+    border-radius: 24px 0 0 0;
+  }
+
+  .lcars-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    color: var(--bg);
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+    padding-bottom: 6px;
+  }
+
+  .lcars-right {
+    width: 80px;
+    background: var(--lcars-orange);
+    border-radius: 0 0 40px 0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 8px;
+  }
+
+  .lcars-right span {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 8px;
+    color: var(--bg);
+    letter-spacing: 0.1em;
+  }
+
+  /* Stardate */
+  .stardate-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.8s ease 0.2s both;
+  }
+
+  .stardate-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--lcars-teal);
+    text-transform: uppercase;
+  }
+
+  .stardate-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    color: var(--lcars-gold);
+    letter-spacing: 0.1em;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--lcars-teal);
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  /* Section labels */
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--lcars-orange);
+    text-transform: uppercase;
+    padding: 0 20px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--lcars-orange), transparent);
+    opacity: 0.3;
+  }
+
+  /* Template selector */
+  .templates {
+    display: flex;
+    gap: 8px;
+    padding: 0 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    animation: fadeIn 0.6s ease 0.3s both;
+  }
+
+  .tmpl-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 7px 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .tmpl-btn:hover { border-color: var(--lcars-gold); color: var(--lcars-gold); }
+  .tmpl-btn.active {
+    background: rgba(200,168,75,0.1);
+    border-color: var(--lcars-gold);
+    color: var(--lcars-gold);
+  }
+
+  /* Input areas */
+  .input-block {
+    padding: 0 20px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.6s ease 0.4s both;
+  }
+
+  textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    padding: 16px;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    min-height: 180px;
+  }
+
+  textarea:focus { border-color: var(--lcars-blue); }
+  textarea::placeholder { color: var(--text-muted); }
+
+  .char-count {
+    text-align: right;
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    letter-spacing: 0.1em;
+  }
+
+  /* Image upload zone */
+  .upload-zone {
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--lcars-teal);
+    background: rgba(75,200,184,0.04);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 20px;
+    margin-bottom: 6px;
+    color: var(--lcars-teal);
+  }
+
+  .upload-text {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Image previews */
+  .image-previews {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .preview-item {
+    position: relative;
+    width: 70px;
+    height: 70px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--lcars-teal);
+  }
+
+  .preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .preview-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(0,0,0,0.8);
+    border: none;
+    color: var(--lcars-red);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  /* Engage button */
+  .engage-wrap {
+    padding: 0 20px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.6s ease 0.5s both;
+  }
+
+  .engage-btn {
+    width: 100%;
+    background: transparent;
+    border: 2px solid var(--lcars-gold);
+    color: var(--lcars-gold);
+    padding: 16px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .engage-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--lcars-gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+    z-index: 0;
+  }
+
+  .engage-btn:hover::before { transform: scaleX(1); }
+  .engage-btn:hover { color: var(--bg); }
+  .engage-btn span { position: relative; z-index: 1; }
+
+  .engage-btn:disabled {
+    border-color: var(--border);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+
+  .engage-btn:disabled::before { display: none; }
+
+  /* Processing state */
+  .processing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 0 20px;
+    margin-bottom: 16px;
+  }
+
+  .warp-dots {
+    display: flex;
+    gap: 4px;
+  }
+
+  .warp-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--lcars-gold);
+    animation: warp 1.2s ease-in-out infinite;
+  }
+
+  .warp-dots span:nth-child(2) { animation-delay: 0.2s; background: var(--lcars-orange); }
+  .warp-dots span:nth-child(3) { animation-delay: 0.4s; background: var(--lcars-teal); }
+
+  .processing-text {
+    font-size: 10px;
+    color: var(--lcars-gold);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  /* Result */
+  .result-wrap {
+    padding: 0 20px;
+    animation: fadeIn 0.5s ease both;
+  }
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .result-meta {
+    font-size: 9px;
+    color: var(--lcars-teal);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 5px 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .copy-btn:hover { border-color: var(--lcars-teal); color: var(--lcars-teal); }
+  .copy-btn.copied { border-color: var(--lcars-teal); color: var(--lcars-teal); }
+
+  .result-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--lcars-gold);
+    border-radius: 4px;
+    padding: 20px;
+    font-family: 'Crimson Pro', serif;
+    font-size: 15px;
+    line-height: 1.9;
+    color: #c8dce8;
+  }
+
+  .result-box h1, .result-box h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--lcars-gold);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin: 20px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(200,168,75,0.2);
+  }
+
+  .result-box h1:first-child, .result-box h2:first-child { margin-top: 0; }
+
+  .result-box h3 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--lcars-orange);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin: 14px 0 6px;
+  }
+
+  .result-box strong { color: #e0f0f8; font-weight: 400; }
+  .result-box ul { padding-left: 18px; margin: 8px 0; }
+  .result-box li { margin: 6px 0; color: #a8c8d8; }
+  .result-box p { margin: 10px 0; }
+
+  /* Error */
+  .error-box {
+    margin: 0 20px;
+    padding: 14px 18px;
+    background: rgba(200,75,75,0.08);
+    border: 1px solid rgba(200,75,75,0.3);
+    border-radius: 4px;
+    font-size: 11px;
+    color: #e08080;
+    letter-spacing: 0.05em;
+  }
+
+  /* LCARS footer bar */
+  .lcars-footer {
+    display: flex;
+    height: 16px;
+    margin-top: 32px;
+    padding: 0 20px;
+    gap: 4px;
+  }
+
+  .lcars-footer div {
+    height: 100%;
+    border-radius: 8px;
+    opacity: 0.4;
+  }
+
+  @keyframes slideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  @keyframes warp {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.4); opacity: 0.3; }
+  }
+
+  /* Mobile tweaks */
+  @media (max-width: 420px) {
+    .lcars-pill { width: 48px; }
+    .lcars-right { width: 60px; }
+    .lcars-title { font-size: 9px; }
+    textarea { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- LCARS Header -->
+  <div class="lcars-header">
+    <div class="lcars-pill"></div>
+    <div class="lcars-bar">
+      <div class="lcars-title">Captain's Log // Intelligence System</div>
+    </div>
+    <div class="lcars-right"><span>MKII</span></div>
+  </div>
+
+  <!-- Stardate -->
+  <div class="stardate-bar">
+    <div>
+      <div class="stardate-label">Stardate</div>
+      <div class="stardate-value" id="stardateDisplay">—</div>
+    </div>
+    <div style="text-align:right">
+      <div class="stardate-label">Starfleet · Intelligence</div>
+      <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;margin-top:4px">
+        <div class="status-dot"></div>
+        <span style="font-size:9px;letter-spacing:0.15em;color:var(--lcars-teal)">ONLINE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template -->
+  <div class="section-label">Mission Type</div>
+  <div class="templates" id="templates"></div>
+
+  <!-- Transcript -->
+  <div class="section-label">Transmission Log</div>
+  <div class="input-block">
+    <textarea id="transcript" placeholder="Paste your transcript here — voice-to-text, Otter, Google Recorder, whatever you've captured..." rows="9"></textarea>
+    <div class="char-count"><span id="charCount">0</span> characters</div>
+  </div>
+
+  <!-- Images -->
+  <div class="section-label">Visual Attachments</div>
+  <div class="input-block">
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="imageInput" accept="image/*" multiple>
+      <div class="upload-icon">⊕</div>
+      <div class="upload-text">Attach screenshots, photos, documents</div>
+      <div style="font-size:9px;color:var(--text-muted);margin-top:4px;letter-spacing:0.08em">Tap to browse · Drag & drop supported</div>
+    </div>
+    <div class="image-previews" id="imagePreviews"></div>
+  </div>
+
+  <!-- Engage -->
+  <div class="engage-wrap">
+    <button class="engage-btn" id="engageBtn" onclick="engage()">
+      <span id="engageLabel">⬡ Engage</span>
+    </button>
+  </div>
+
+  <!-- Processing -->
+  <div class="processing" id="processingState" style="display:none">
+    <div class="warp-dots">
+      <span></span><span></span><span></span>
+    </div>
+    <div class="processing-text">Analysing transmission...</div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox" style="display:none"></div>
+
+  <!-- Result -->
+  <div class="result-wrap" id="resultWrap" style="display:none">
+    <div class="result-header">
+      <div class="result-meta" id="resultMeta"></div>
+      <button class="copy-btn" id="copyBtn" onclick="copyResult()">Copy</button>
+    </div>
+    <div class="result-box" id="resultBox"></div>
+  </div>
+
+  <!-- Footer bars -->
+  <div class="lcars-footer">
+    <div style="width:48px;background:var(--lcars-gold)"></div>
+    <div style="width:24px;background:var(--lcars-orange)"></div>
+    <div style="flex:1;background:var(--lcars-blue)"></div>
+    <div style="width:32px;background:var(--lcars-teal)"></div>
+    <div style="width:16px;background:var(--lcars-gold)"></div>
+  </div>
+
+</div>
+
+<script>
+const TEMPLATES = [
+  { id: "meeting", label: "Briefing", prompt: "This is a meeting transcript. Extract: 1) A concise summary, 2) Key decisions made, 3) Action items with owners if mentioned, 4) Open questions. Format with clear headings. If images are attached, analyze and integrate them into the output." },
+  { id: "braindump", label: "Brain Dump", prompt: "Organize this stream-of-consciousness into: 1) Core ideas, 2) To-do items, 3) Questions to explore, 4) Interesting tangents. If images are attached, describe them and integrate findings. Be concise and structured." },
+  { id: "client", label: "Away Mission", prompt: "This is a client or field conversation. Extract: 1) Summary of needs/requests, 2) Key pain points, 3) Commitments made, 4) Required follow-ups. If images are attached, describe and integrate visual context. Format cleanly." },
+  { id: "ideas", label: "Ideation", prompt: "Organize this creative session into: 1) Core concept, 2) Strongest ideas ranked, 3) Ideas worth developing, 4) Constraints or considerations. If images are attached, analyze and factor them in. Keep the energy." },
+  { id: "scope", label: "Scope of Work", prompt: "Draft a professional scope of work including: Project overview, Deliverables, Inclusions, Exclusions, Timeline considerations, Open items. Analyze any attached images as supporting visual context." },
+];
+
+let selectedTemplate = TEMPLATES[0];
+let attachedImages = []; // { base64, mediaType, name }
+let lastResult = "";
+
+// Stardate calculation (TNG format)
+function getStardate() {
+  const epoch = new Date('2323-01-01').getTime();
+  const now = Date.now();
+  const diff = now - epoch;
+  const stardate = (diff / (1000 * 60 * 60 * 24 * 365.25)) * 1000;
+  return stardate.toFixed(1);
+}
+
+function init() {
+  document.getElementById('stardateDisplay').textContent = getStardate();
+
+  const tmplWrap = document.getElementById('templates');
+  TEMPLATES.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'tmpl-btn' + (t.id === selectedTemplate.id ? ' active' : '');
+    btn.textContent = t.label;
+    btn.onclick = () => {
+      selectedTemplate = t;
+      document.querySelectorAll('.tmpl-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+    tmplWrap.appendChild(btn);
+  });
+
+  document.getElementById('transcript').addEventListener('input', function() {
+    document.getElementById('charCount').textContent = this.value.length.toLocaleString();
+  });
+
+  const imageInput = document.getElementById('imageInput');
+  imageInput.addEventListener('change', handleImageFiles);
+
+  const zone = document.getElementById('uploadZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    handleImageFiles({ target: { files: e.dataTransfer.files } });
+  });
+}
+
+function handleImageFiles(e) {
+  const files = Array.from(e.target.files);
+  files.forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      const base64 = evt.target.result.split(',')[1];
+      attachedImages.push({ base64, mediaType: file.type, name: file.name });
+      renderPreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderPreviews() {
+  const wrap = document.getElementById('imagePreviews');
+  wrap.innerHTML = '';
+  attachedImages.forEach((img, i) => {
+    const item = document.createElement('div');
+    item.className = 'preview-item';
+    item.innerHTML = `
+      <img src="data:${img.mediaType};base64,${img.base64}" alt="${img.name}">
+      <button class="preview-remove" onclick="removeImage(${i})">×</button>
+    `;
+    wrap.appendChild(item);
+  });
+}
+
+function removeImage(i) {
+  attachedImages.splice(i, 1);
+  renderPreviews();
+}
+
+async function engage() {
+  const transcript = document.getElementById('transcript').value.trim();
+  if (!transcript && attachedImages.length === 0) return;
+
+  const btn = document.getElementById('engageBtn');
+  btn.disabled = true;
+  document.getElementById('processingState').style.display = 'flex';
+  document.getElementById('resultWrap').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'none';
+
+  // Build message content
+  const userContent = [];
+
+  // Add images first
+  attachedImages.forEach(img => {
+    userContent.push({
+      type: "image",
+      source: { type: "base64", media_type: img.mediaType, data: img.base64 }
+    });
+  });
+
+  // Add transcript text
+  const stardate = getStardate();
+  userContent.push({
+    type: "text",
+    text: `${selectedTemplate.prompt}\n\nStardate: ${stardate}\n\n---\nTRANSCRIPT:\n${transcript || "(No transcript — analyze attached images only)"}`
+  });
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        system: `You are a precise, intelligent Starfleet intelligence officer processing a Captain's Log entry. Format output in clean markdown with bold headings and bullet points. Be thorough but concise. Always open with "Stardate ${stardate}" as a small header. Never pad responses.`,
+        messages: [{ role: "user", content: userContent }]
+      })
+    });
+
+    const data = await res.json();
+    const text = data.content?.find(b => b.type === "text")?.text || "";
+    lastResult = text;
+
+    document.getElementById('resultMeta').textContent = `Stardate ${stardate} · ${selectedTemplate.label}`;
+    document.getElementById('resultBox').innerHTML = renderMarkdown(text);
+    document.getElementById('resultWrap').style.display = 'block';
+
+  } catch (err) {
+    document.getElementById('errorBox').textContent = "Transmission failure. Check connection and try again.";
+    document.getElementById('errorBox').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    document.getElementById('processingState').style.display = 'none';
+  }
+}
+
+function copyResult() {
+  if (!lastResult) return;
+  navigator.clipboard.writeText(lastResult);
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = 'Copied';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+}
+
+function renderMarkdown(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)(\n(?!<li>)|$)/g, '<ul>$1</ul>\n')
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/^(?!<[hul])/gm, '')
+    .split('\n').map(l => l.trim()).filter(Boolean).join('\n');
+}
+
+init();
+</script>
+</body>
+</html>
