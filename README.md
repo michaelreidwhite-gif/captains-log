@@ -1,1 +1,1 @@
-# captains-log
+ideas and notes and stuff
