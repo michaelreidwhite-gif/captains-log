@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0a">
+<title>Log</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-2: #1a1a1a;
+    --surface-3: #222;
+    --border: #2a2a2a;
+    --border-light: #333;
+    --text: #e8e8e8;
+    --text-dim: #888;
+    --text-muted: #555;
+    --accent: #4af;
+    --accent-dim: #4af3;
+    --accent-glow: #4af1a;
+    --green: #4c6;
+    --orange: #fa3;
+    --red: #f55;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: 'DM Sans', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  html, body {
+    height: 100%; width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* ── App Shell ── */
+  #app {
+    display: flex; flex-direction: column;
+    height: 100vh; height: 100dvh;
+    max-width: 600px; margin: 0 auto;
+    position: relative;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 16px 20px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    backdrop-filter: blur(20px);
+    background: var(--bg);
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 18px; font-weight: 500; letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  header h1 span { color: var(--text-muted); font-weight: 300; }
+  .header-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .icon-btn:hover, .icon-btn.active {
+    background: var(--surface-2);
+    color: var(--text);
+    border-color: var(--border-light);
+  }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  /* ── Views ── */
+  .view { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .view.active { display: flex; }
+
+  /* ── Feed View ── */
+  #feedView { }
+  .feed-scroll {
+    flex: 1; overflow-y: auto; padding: 16px 20px;
+    scroll-behavior: smooth;
+  }
+  .feed-scroll::-webkit-scrollbar { width: 0; }
+
+  .empty-state {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100%; text-align: center; padding: 40px;
+    color: var(--text-muted);
+  }
+  .empty-state .empty-icon {
+    width: 48px; height: 48px; margin-bottom: 16px;
+    border: 2px dashed var(--border); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
+  }
+  .empty-state p { font-size: 14px; line-height: 1.6; max-width: 260px; }
+  .empty-state p strong { color: var(--text-dim); font-weight: 500; }
+
+  /* ── Entry Cards ── */
+  .entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    animation: fadeUp 0.3s ease;
+    position: relative;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .entry-meta {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px; font-size: 12px; color: var(--text-muted);
+    font-family: var(--mono); font-weight: 300;
+  }
+  .entry-type {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px;
+    background: var(--surface-3); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .entry-type.text { color: var(--accent); }
+  .entry-type.voice { color: var(--green); }
+  .entry-type.link { color: var(--orange); }
+  .entry-type.image { color: #c8f; }
+  .entry-body { font-size: 14px; line-height: 1.65; color: var(--text); }
+  .entry-body a { color: var(--accent); text-decoration: none; }
+  .entry-body a:hover { text-decoration: underline; }
+  .entry-image {
+    max-width: 100%; border-radius: var(--radius-sm);
+    margin-top: 8px; border: 1px solid var(--border);
+  }
+  .entry-delete {
+    position: absolute; top: 12px; right: 12px;
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; padding: 4px; opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+  }
+  .entry:hover .entry-delete { opacity: 1; }
+  .entry-delete:hover { color: var(--red); }
+
+  /* ── Input Bar ── */
+  .input-bar {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    padding: 12px 16px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .input-row {
+    display: flex; align-items: flex-end; gap: 8px;
+  }
+  .input-wrap {
+    flex: 1; position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.2s;
+  }
+  .input-wrap:focus-within { border-color: var(--accent-dim); }
+  #mainInput {
+    width: 100%; background: transparent; border: none;
+    color: var(--text); font-family: var(--font); font-size: 15px;
+    padding: 12px 14px; resize: none; outline: none;
+    min-height: 44px; max-height: 120px; line-height: 1.4;
+  }
+  #mainInput::placeholder { color: var(--text-muted); }
+  .input-attachments {
+    display: flex; gap: 4px; padding: 0 10px 8px;
+  }
+  .input-attachments:empty { display: none; }
+  .attachment-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 6px;
+    background: var(--surface-3); font-size: 12px;
+    color: var(--text-dim); font-family: var(--mono);
+  }
+  .attachment-chip .remove {
+    cursor: pointer; color: var(--text-muted);
+    margin-left: 2px;
+  }
+  .attachment-chip .remove:hover { color: var(--red); }
+
+  .input-actions {
+    display: flex; gap: 4px;
+  }
+  .action-btn {
+    width: 44px; height: 44px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .action-btn:hover { background: var(--surface-2); color: var(--text); }
+  .action-btn.recording {
+    background: var(--red); border-color: var(--red);
+    color: #fff; animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  .action-btn.send {
+    background: var(--accent); border-color: var(--accent);
+    color: #000;
+  }
+  .action-btn.send:hover { opacity: 0.85; }
+  .action-btn svg { width: 20px; height: 20px; }
+
+  /* ── Insights Panel ── */
+  #insightsView { }
+  .insights-scroll {
+    flex: 1; overflow-y: auto; padding: 20px;
+  }
+  .insights-scroll::-webkit-scrollbar { width: 0; }
+
+  .insight-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px; margin-bottom: 12px;
+    animation: fadeUp 0.3s ease;
+  }
+  .insight-card h3 {
+    font-size: 13px; font-weight: 500;
+    color: var(--accent); margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    font-family: var(--mono);
+  }
+  .insight-card p {
+    font-size: 14px; line-height: 1.65; color: var(--text);
+  }
+  .insight-card .refs {
+    margin-top: 10px; font-size: 12px; color: var(--text-muted);
+    font-family: var(--mono);
+  }
+
+  .analyze-btn {
+    width: 100%; padding: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--accent);
+    font-family: var(--font); font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+    margin-bottom: 16px;
+  }
+  .analyze-btn:hover { background: var(--surface-2); border-color: var(--accent-dim); }
+  .analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .analyze-btn .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid var(--accent-dim); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+    vertical-align: middle; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Settings Panel ── */
+  #settingsView { padding: 20px; overflow-y: auto; }
+  .settings-group { margin-bottom: 24px; }
+  .settings-group label {
+    display: block; font-size: 12px; font-weight: 500;
+    color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 8px;
+    font-family: var(--mono);
+  }
+  .settings-input {
+    width: 100%; padding: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: var(--mono); font-size: 13px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .settings-input:focus { border-color: var(--accent-dim); }
+  .settings-note { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+  .danger-zone { margin-top: 32px; }
+  .danger-btn {
+    padding: 10px 16px; background: transparent;
+    border: 1px solid var(--red); border-radius: var(--radius-sm);
+    color: var(--red); font-family: var(--font); font-size: 13px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .danger-btn:hover { background: #f552; }
+
+  /* ── Hidden file input ── */
+  #imageInput { display: none; }
+
+  /* ── Responsive ── */
+  @media (max-width: 400px) {
+    header { padding: 12px 16px 10px; }
+    .feed-scroll { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <h1>log <span>/</span></h1>
+    <div class="header-actions">
+      <button class="icon-btn" id="feedBtn" title="Feed" onclick="showView('feed')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="14" y2="18"/></svg>
+      </button>
+      <button class="icon-btn" id="insightsBtn" title="Insights" onclick="showView('insights')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" title="Settings" onclick="showView('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Feed View -->
+  <div class="view active" id="feedView">
+    <div class="feed-scroll" id="feedScroll">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <p>Drop anything here — text, voice, links, images. <strong>It all goes in.</strong></p>
+      </div>
+    </div>
+    <div class="input-bar">
+      <div class="input-row">
+        <div class="input-wrap">
+          <textarea id="mainInput" placeholder="What's on your mind..." rows="1" oninput="autoGrow(this)"></textarea>
+          <div class="input-attachments" id="attachments"></div>
+        </div>
+        <div class="input-actions">
+          <button class="action-btn" id="micBtn" title="Voice" onclick="toggleRecording()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          </button>
+          <button class="action-btn" id="imgBtn" title="Image" onclick="document.getElementById('imageInput').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </button>
+          <button class="action-btn send" id="sendBtn" title="Log it" onclick="submitEntry()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="imageInput" accept="image/*" onchange="handleImage(event)">
+  </div>
+
+  <!-- Insights View -->
+  <div class="view" id="insightsView">
+    <div class="insights-scroll" id="insightsScroll">
+      <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()">Analyze my entries</button>
+      <div id="insightsContainer"></div>
+    </div>
+  </div>
+
+  <!-- Settings View -->
+  <div class="view" id="settingsView">
+    <div class="settings-group">
+      <label>API Key</label>
+      <input class="settings-input" type="password" id="apiKeyInput" placeholder="sk-ant-..." oninput="saveSettings()">
+      <p class="settings-note">Your Anthropic API key. Stored locally on this device only.</p>
+    </div>
+    <div class="settings-group">
+      <label>Entry count</label>
+      <p style="font-family:var(--mono);font-size:14px;color:var(--text-dim)" id="entryCount">0</p>
+    </div>
+    <div class="settings-group danger-zone">
+      <label>Danger zone</label>
+      <button class="danger-btn" onclick="clearAll()">Clear all entries</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let entries = JSON.parse(localStorage.getItem('log_entries') || '[]');
+let apiKey = localStorage.getItem('log_api_key') || '';
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
+let pendingImage = null;
+
+// ── Init ──
+function init() {
+  document.getElementById('apiKeyInput').value = apiKey;
+  renderFeed();
+  updateCount();
+  showView('feed');
+
+  // Paste handler for images/links
+  document.getElementById('mainInput').addEventListener('paste', (e) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          processImageFile(file);
+          return;
+        }
+      }
+    }
+  });
+
+  // Enter to submit (shift+enter for newline)
+  document.getElementById('mainInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitEntry();
+    }
+  });
+}
+
+// ── Views ──
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(name + 'View').classList.add('active');
+  document.getElementById(name + 'Btn').classList.add('active');
+}
+
+// ── Auto-grow textarea ──
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ── Image handling ──
+function handleImage(e) {
+  const file = e.target.files[0];
+  if (file) processImageFile(file);
+  e.target.value = '';
+}
+
+function processImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    pendingImage = e.target.result;
+    const attachments = document.getElementById('attachments');
+    attachments.innerHTML = `
+      <span class="attachment-chip">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        image
+        <span class="remove" onclick="removeImage()">×</span>
+      </span>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImage() {
+  pendingImage = null;
+  document.getElementById('attachments').innerHTML = '';
+}
+
+// ── Voice recording ──
+async function toggleRecording() {
+  const btn = document.getElementById('micBtn');
+  if (isRecording) {
+    isRecording = false;
+    btn.classList.remove('recording');
+    mediaRecorder?.stop();
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      await transcribeAudio(blob);
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    btn.classList.add('recording');
+  } catch (err) {
+    alert('Microphone access needed for voice input.');
+  }
+}
+
+async function transcribeAudio(blob) {
+  if (!apiKey) {
+    alert('Add your API key in settings to use voice input.');
+    return;
+  }
+
+  const input = document.getElementById('mainInput');
+  input.placeholder = 'Transcribing...';
+
+  try {
+    const base64 = await blobToBase64(blob);
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Transcribe this audio exactly. Return only the transcription, no commentary.' },
+            { type: 'document', source: { type: 'base64', media_type: 'audio/webm', data: base64 } }
+          ]
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    const text = data.content?.find(b => b.type === 'text')?.text || '';
+    if (text) {
+      addEntry('voice', text);
+    }
+  } catch (err) {
+    console.error('Transcription failed:', err);
+    alert('Transcription failed. Check your API key and try again.');
+  }
+
+  input.placeholder = "What's on your mind...";
+}
+
+function blobToBase64(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+
+// ── Submit entry ──
+function submitEntry() {
+  const input = document.getElementById('mainInput');
+  const text = input.value.trim();
+
+  if (!text && !pendingImage) return;
+
+  // Detect type
+  let type = 'text';
+  if (pendingImage && !text) {
+    type = 'image';
+  } else if (pendingImage && text) {
+    type = 'image';
+  } else if (isURL(text)) {
+    type = 'link';
+  }
+
+  addEntry(type, text, pendingImage);
+  input.value = '';
+  input.style.height = 'auto';
+  pendingImage = null;
+  document.getElementById('attachments').innerHTML = '';
+}
+
+function isURL(str) {
+  try {
+    const url = new URL(str);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch { return false; }
+}
+
+// ── Entry management ──
+function addEntry(type, text, image = null) {
+  const entry = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    type,
+    text: text || '',
+    image,
+    timestamp: new Date().toISOString()
+  };
+  entries.unshift(entry);
+  save();
+  renderFeed();
+  updateCount();
+}
+
+function deleteEntry(id) {
+  entries = entries.filter(e => e.id !== id);
+  save();
+  renderFeed();
+  updateCount();
+}
+
+function save() {
+  localStorage.setItem('log_entries', JSON.stringify(entries));
+}
+
+function saveSettings() {
+  apiKey = document.getElementById('apiKeyInput').value.trim();
+  localStorage.setItem('log_api_key', apiKey);
+}
+
+function updateCount() {
+  document.getElementById('entryCount').textContent = entries.length;
+}
+
+function clearAll() {
+  if (!confirm('Delete all entries? This cannot be undone.')) return;
+  entries = [];
+  save();
+  renderFeed();
+  updateCount();
+  document.getElementById('insightsContainer').innerHTML = '';
+}
+
+// ── Render feed ──
+function renderFeed() {
+  const scroll = document.getElementById('feedScroll');
+  const empty = document.getElementById('emptyState');
+
+  if (entries.length === 0) {
+    empty.style.display = 'flex';
+    // Remove all entries but keep empty state
+    scroll.querySelectorAll('.entry').forEach(e => e.remove());
+    return;
+  }
+
+  empty.style.display = 'none';
+  const fragment = document.createDocumentFragment();
+
+  entries.forEach(entry => {
+    const el = document.createElement('div');
+    el.className = 'entry';
+    el.dataset.id = entry.id;
+
+    const time = formatTime(entry.timestamp);
+    let body = '';
+
+    if (entry.type === 'link') {
+      body = `<a href="${escapeHtml(entry.text)}" target="_blank" rel="noopener">${escapeHtml(entry.text)}</a>`;
+    } else {
+      body = escapeHtml(entry.text).replace(/\n/g, '<br>');
+    }
+
+    if (entry.image) {
+      body += `<br><img class="entry-image" src="${entry.image}" alt="attached image">`;
+    }
+
+    el.innerHTML = `
+      <div class="entry-meta">
+        <span class="entry-type ${entry.type}">${entry.type}</span>
+        <span>${time}</span>
+      </div>
+      <div class="entry-body">${body}</div>
+      <button class="entry-delete" onclick="deleteEntry('${entry.id}')" title="Delete">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>`;
+
+    fragment.appendChild(el);
+  });
+
+  // Clear and re-render
+  scroll.querySelectorAll('.entry').forEach(e => e.remove());
+  scroll.insertBefore(fragment, empty);
+}
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now - d;
+
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Analysis ──
+async function runAnalysis() {
+  if (!apiKey) {
+    alert('Add your API key in settings first.');
+    return;
+  }
+  if (entries.length < 2) {
+    alert('Log a few more entries first — need at least 2 to find connections.');
+    return;
+  }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Thinking...';
+
+  // Build context from entries
+  const context = entries.slice(0, 50).map((e, i) => {
+    let content = `[${e.type}] (${new Date(e.timestamp).toLocaleString()}) ${e.text}`;
+    if (e.image) content += ' [has attached image]';
+    return content;
+  }).join('\n\n');
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: `You are an insight engine for a personal log. The user dumps thoughts, links, voice notes, and images into this log throughout their day. Your job is to find non-obvious connections, surface patterns, suggest actions, and be genuinely useful — not generic. Be concise and specific. Respond in JSON format only, no markdown fences. Format: { "insights": [{ "title": "short title", "body": "the insight", "refs": "which entries this relates to" }] }. Generate 2-5 insights. Be surprising and smart. Don't be generic or obvious.`,
+        messages: [{ role: 'user', content: `Here are my recent log entries:\n\n${context}\n\nFind connections, patterns, and actionable suggestions.` }]
+      })
+    });
+
+    const data = await resp.json();
+    const text = data.content?.find(b => b.type === 'text')?.text || '';
+    const clean = text.replace(/```json|```/g, '').trim();
+
+    try {
+      const parsed = JSON.parse(clean);
+      renderInsights(parsed.insights || []);
+    } catch {
+      // If JSON parse fails, show raw text
+      document.getElementById('insightsContainer').innerHTML = `
+        <div class="insight-card"><p>${escapeHtml(text)}</p></div>`;
+    }
+  } catch (err) {
+    console.error('Analysis failed:', err);
+    alert('Analysis failed. Check your API key and connection.');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Analyze my entries';
+}
+
+function renderInsights(insights) {
+  const container = document.getElementById('insightsContainer');
+  container.innerHTML = '';
+
+  if (!insights.length) {
+    container.innerHTML = '<div class="insight-card"><p>No strong patterns yet. Keep logging.</p></div>';
+    return;
+  }
+
+  insights.forEach(ins => {
+    const card = document.createElement('div');
+    card.className = 'insight-card';
+    card.innerHTML = `
+      <h3>${escapeHtml(ins.title)}</h3>
+      <p>${escapeHtml(ins.body)}</p>
+      ${ins.refs ? `<div class="refs">↳ ${escapeHtml(ins.refs)}</div>` : ''}`;
+    container.appendChild(card);
+  });
+}
+
+// ── Boot ──
+init();
+</script>
+</body>
+</html>
